@@ -35,7 +35,6 @@ def filterImage(f, wSize, sigma):
     # Filtered image g is same size as original f
     g = np.zeros((len(f), len(f[0])))
     # Pad f with zeros
-
     fPadded = np.pad(f, offset, 'constant', constant_values=0)
     # Slide window across padded image and convolve
     for i in range(len(f)):
@@ -46,7 +45,25 @@ def filterImage(f, wSize, sigma):
 
 
 # Laplacian of Gaussian function takes an input image, sigma, and window size and returns the laplacian of the gaussian of the input image
+def LoG(f, g, c):
+    # Generate Laplacian window
+    w = np.array([[0, 1, 0],[1, -4, 1],[0, 1, 0]])
+    offset = len(w) // 2
 
+    # Convolution g and w
+    gLoG = np.zeros((len(g), len(g[0])))
+    gPadded = np.pad(g, offset, 'constant', constant_values=0)
+    for i in range(len(g)):
+        for j in range(len(g[0])):
+            gLoG[i][j] = convolve(w, gPadded, i+offset, j+offset)
+
+    result = f - c*gLoG
+    # Scale result to keep in valid intensity range
+    for i in range(len(result)):
+        for j in range(len(result[0])):
+            result[i][j] = np.floor((255 / (result.max() - result.min())) * (result[i][j] - result.min()))
+
+    return result
 
 # Sharpening function takes an input image path, sigma, window size, and a scaling factor c, and returns f + cgLoG
 def sharpenImage(imagePath, sigma, wSize, c):
@@ -57,9 +74,14 @@ def sharpenImage(imagePath, sigma, wSize, c):
     # Convert to HSV
     f = cv2.cvtColor(f,cv2.COLOR_BGR2HSV)
 
+
     # Call filter function
     g = f.copy()
     g[:,:,2] = filterImage(f[:,:,2], wSize, sigma)
+
+    # Call LoG function
+    gLoG = g.copy()
+    gLoG[:,:,2] = LoG(f[:,:,2], g[:,:,2], c)
 
     # Display input image
     f = cv2.cvtColor(f,cv2.COLOR_HSV2BGR)
@@ -71,4 +93,9 @@ def sharpenImage(imagePath, sigma, wSize, c):
     cv2.imshow('Filtered Image', g)
     cv2.waitKey()
 
-    return
+    # Display LoG image
+    gLoG = cv2.cvtColor(gLoG,cv2.COLOR_HSV2BGR)
+    cv2.imshow('LoG Image', gLoG)
+    cv2.waitKey()
+
+    return gLoG
